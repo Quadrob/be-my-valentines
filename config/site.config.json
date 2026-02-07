@@ -1,0 +1,99 @@
+{
+  "personal": {
+    "toName": "HER_NAME_HERE",
+    "fromName": "YOUR_NAME_HERE",
+    "pageTitle": "Happy Valentine’s Day",
+    "introLines": [
+      "Hey {toName}.",
+      "Not sure if I’ve told you this, but I really like your name!",
+      "Also, today is Valentine Day!!!",
+      "I was going to send you a message saying something like...",
+      "Happy Valentine’s Day {toName}!! All that Love and blah blah…",
+      "But then I stopped.",
+      "I realised, I'm a nerd and I wanted to do something different.",
+      "Because…",
+      "You are special and deserve a little extra :)",
+      "So…"
+    ],
+    "questionHeading": "Will you be my valentine {toName}?",
+    "noSequence": [
+      { "phrase": "Are you sure?", "gif": "assets/no1.gif" },
+      { "phrase": "Really sure??", "gif": "assets/no2.gif" },
+      { "phrase": "You might be mistaken?", "gif": "assets/no3.gif" },
+      { "phrase": "Think again 🥺", "gif": "assets/no3.gif" },
+      { "phrase": "Last chance!", "gif": "assets/no4.gif" },
+      { "phrase": "Don’t break my heart…", "gif": "assets/no4.gif" },
+      { "phrase": "Okay wait wait… please?", "gif": "assets/no5.gif" },
+      { "phrase": "I’m not giving up 😤", "gif": "assets/no5.gif" },
+      { "phrase": "What if I ask nicely?", "gif": "assets/no5.gif" },
+      { "phrase": "Pretty please?", "gif": "assets/no6.gif" },
+      { "phrase": "Ok you’re just being mean 😭", "gif": "assets/no6.gif" },
+      { "phrase": "You’ll regret this...", "gif": "assets/no6.gif" },
+      { "phrase": "Resetting…", "reset": true }
+    ],
+    "yesMessage": "Okay okay, one more thing before you leave {toName}...",
+    "yesMessageHead": "Yeepppieee, I had a feeling you’d say yes ;)",
+    "finalThanksTitle": "Thank you sticking around for my corny Valentine’s proposal 😉",
+    "finalThanksBody": "I’ll message you soon, but in the meantime, have a wonderful Valentine’s Day {toName}!"
+  },
+  "choices": {
+    "food": [
+      "Sushi",
+      "Ramen",
+      "Italian (pasta)",
+      "Pizza",
+      "Korean",
+      "Thai",
+      "Mexican",
+      "Indian",
+      "Burgers",
+      "Steak",
+      "Tapas",
+      "Seafood",
+      "Something else (tell me)"
+    ],
+    "flowers": [
+      "Roses",
+      "Tulips",
+      "Lilies",
+      "Sunflowers",
+      "Daisies",
+      "Orchids",
+      "Mixed bouquet",
+      "Something else (tell me)"
+    ],
+    "sweets": [
+      "Ferrero Rocher",
+      "Lindt",
+      "Milk chocolate",
+      "Dark chocolate",
+      "White chocolate",
+      "Macarons",
+      "Cookies",
+      "Brownies",
+      "Ice cream",
+      "Jellies",
+      "Something else (tell me)"
+    ]
+  },
+  "media": {
+    "memeQuestionGif": "assets/question.gif",
+    "finalNoGif": "assets/finalNo.gif",
+    "memeYesGif": "assets/yes.gif",
+    "audio": {
+      "enabled": false,
+      "bgmUrl": "",
+      "yesUrl": "",
+      "noUrl": ""
+    }
+  },
+  "github": {
+    "enabled": false,
+    "apiBase": "https://api.github.com",
+    "owner": "OWNER",
+    "repo": "REPO",
+    "issueNumber": 1,
+    "token": "",
+    "promptForToken": true
+  }
+}

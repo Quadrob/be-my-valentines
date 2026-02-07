@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A tiny Valentine website" />
+    <title>Happy Valentine’s Day ❤️</title>
+
+    <link rel="stylesheet" href="css/style.css" />
+
+    <script defer src="js/main.js"></script>
+  </head>
+
+  <body>
+    <canvas id="starfield" aria-hidden="true"></canvas>
+
+    <main class="app" id="app">
+      <!-- INTRO -->
+      <section class="screen screen--active" id="screen-intro">
+        <div class="intro">
+          <!-- <div class="intro__tag">For you</div> -->
+          <h1 class="intro__line" id="intro-line">Loading…</h1>
+          <p class="intro__sub" id="intro-sub">(tap to continue)</p>
+          <button class="btn btn--primary intro__cta" id="intro-continue" type="button">
+            Continue
+          </button>
+        </div>
+      </section>
+
+      <!-- QUESTION -->
+      <section class="screen" id="screen-question" aria-hidden="true">
+        <div class="card">
+          <div class="meme">
+            <img id="meme-gif" alt="meme" />
+          </div>
+          <h2 class="card__title" id="question-heading">Will you be my valentine?</h2>
+
+          <div class="buttons" id="question-buttons">
+            <button class="btn btn--yes" id="yes-button" type="button">Yes</button>
+            <button class="btn btn--no" id="no-button" type="button">No</button>
+          </div>
+
+          <div class="message" id="yes-message" hidden>
+            <p class="message__text" id="yes-message-text"></p>
+            <button class="btn btn--primary" id="start-choices" type="button">
+              Let’s go!
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHOICES (YES FLOW) -->
+      <section class="screen" id="screen-choices" aria-hidden="true">
+        <div class="card">
+          <div class="progress">
+            <div class="progress__bar" id="progress-bar"></div>
+          </div>
+
+          <h2 class="card__title" id="choice-title">Choose one</h2>
+          <p class="card__subtitle" id="choice-subtitle">Just one — I’ll make it happen.</p>
+
+          <div class="choices" id="choices-container"></div>
+
+          <div class="nav">
+            <button class="btn btn--ghost" id="back-button" type="button">Back</button>
+            <button class="btn btn--primary" id="next-button" type="button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SUBMIT / THANKS -->
+      <section class="screen" id="screen-submit" aria-hidden="true">
+        <div class="card">
+          <h2 class="card__title" id="summary-title">I'll be sure to remember these choices 😉</h2>
+          <p class="card__subtitle">Here’s what you picked:</p>
+
+          <div class="summary" id="summary"></div>
+
+          <div class="nav nav--stack">
+              <p class="card__title countdown" id="countdown" aria-live="polite"></p>
+            <p class="fineprint" id="send-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+        <!-- FINAL -->
+        <section class="screen" id="screen-final" aria-hidden="true">
+          <div class="card card--final">
+            <h2 class="card__title" id="final-title"></h2>
+            <p class="card__subtitle" id="final-body"></p>
+          </div>
+        </section>
+
+      <footer class="footer">
+        <div class="footer__text" id="footer-text"></div>
+        <button class="mute" id="mute-toggle" type="button" aria-label="Toggle music">Music</button>
+      </footer>
+    </main>
+  </body>
+</html>

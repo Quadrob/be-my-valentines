@@ -1,0 +1,805 @@
+let siteConfig = null;
+
+const state = {
+  introIndex: 0,
+  introDone: false,
+  noClicks: 0,
+  yesChosen: false,
+  noEvasiveEnabled: false,
+  choices: {
+    food: null,
+    foodOther: "",
+    flowers: null,
+    flowersOther: "",
+    sweets: null,
+    sweetsOther: "",
+    date: ""
+  },
+  audio: {
+    enabled: false,
+    bgm: null,
+    yes: null,
+    no: null,
+    muted: true
+  }
+};
+
+function setMemeGif(imgEl, relativePath) {
+  if (!imgEl || !relativePath) return;
+  const absolute = new URL(relativePath, window.location.href).href;
+  if (imgEl.src === absolute) return; // don't reload same GIF
+  imgEl.src = relativePath;
+}
+
+const STEPS = [
+  {
+    key: "food",
+    title: "Food first 🍽️",
+    subtitle: "Pick one and I’ll plan around it."
+  },
+  {
+    key: "flowers",
+    title: "Flowers 🌷",
+    subtitle: "One bouquet coming right up."
+  },
+  {
+    key: "sweets",
+    title: "Sweet tooth 🍫",
+    subtitle: "Pick your favorite."
+  },
+  {
+    key: "date",
+    title: "Pick a date 📅",
+    subtitle: "When are you free?"
+  }
+];
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function formatTemplate(str, vars) {
+  return String(str).replace(/\{(\w+)\}/g, (_, key) => {
+    return vars[key] ?? `{${key}}`;
+  });
+}
+
+function setScreen(activeId) {
+  const screens = document.querySelectorAll('.screen');
+  for (const screen of screens) {
+    const isActive = screen.id === activeId;
+    screen.classList.toggle('screen--active', isActive);
+    screen.setAttribute('aria-hidden', String(!isActive));
+  }
+}
+
+async function loadConfig() {
+  const res = await fetch('config/site.config.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load config');
+  siteConfig = await res.json();
+
+  // Apply title
+  document.title = siteConfig.personal?.pageTitle || document.title;
+}
+
+function initStarfield() {
+  const canvas = $('starfield');
+  const ctx = canvas.getContext('2d');
+  const stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function rand(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function rebuild() {
+    stars.length = 0;
+    const count = Math.floor((window.innerWidth * window.innerHeight) / 3000);
+    for (let i = 0; i < Math.min(600, Math.max(220, count)); i++) {
+      stars.push({
+        x: rand(0, canvas.width),
+        y: rand(0, canvas.height),
+        r: rand(0.4, 1.8),
+        o: rand(0.2, 1.0),
+        tw: rand(0.002, 0.01)
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (const s of stars) {
+      s.o += (Math.random() > 0.5 ? 1 : -1) * s.tw;
+      s.o = Math.min(1, Math.max(0.15, s.o));
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${s.o})`;
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  rebuild();
+  window.addEventListener('resize', () => {
+    resize();
+    rebuild();
+  });
+
+  requestAnimationFrame(draw);
+}
+
+function initAudio() {
+  const cfg = siteConfig.media?.audio;
+  state.audio.enabled = Boolean(cfg?.enabled);
+  state.audio.muted = true;
+
+  if (!state.audio.enabled) {
+    $('mute-toggle').style.display = 'none';
+    return;
+  }
+
+  const safeAudio = (url) => {
+    if (!url) return null;
+    const a = new Audio(url);
+    a.loop = false;
+    a.preload = 'auto';
+    a.muted = state.audio.muted;
+    return a;
+  };
+
+  state.audio.bgm = safeAudio(cfg.bgmUrl);
+  if (state.audio.bgm) state.audio.bgm.loop = true;
+  state.audio.yes = safeAudio(cfg.yesUrl);
+  state.audio.no = safeAudio(cfg.noUrl);
+
+  $('mute-toggle').addEventListener('click', () => {
+    state.audio.muted = !state.audio.muted;
+    const all = [state.audio.bgm, state.audio.yes, state.audio.no].filter(Boolean);
+    for (const a of all) a.muted = state.audio.muted;
+
+    $('mute-toggle').textContent = state.audio.muted ? 'Music' : 'Music: on';
+
+    if (!state.audio.muted && state.audio.bgm) {
+      state.audio.bgm.play().catch(() => {
+        // Autoplay may be blocked until a user gesture; ignore.
+      });
+    }
+  });
+}
+
+function playCue(which) {
+  if (!state.audio.enabled) return;
+  const a = state.audio[which];
+  if (!a) return;
+
+  try {
+    a.currentTime = 0;
+    a.play();
+  } catch {
+    // ignore
+  }
+}
+
+function startIntro() {
+  const introLine = $('intro-line');
+  const introSub = $('intro-sub');
+  const btn = $('intro-continue');
+
+  const vars = {
+    toName: siteConfig.personal?.toName,
+    fromName: siteConfig.personal?.fromName
+  };
+
+  const lines = (siteConfig.personal?.introLines || []).map((l) =>
+    formatTemplate(l, vars)
+  );
+
+  state.introIndex = 0;
+  state.introDone = false;
+
+  // Let user tap to speed up / finish
+  const finish = () => {
+    state.introDone = true;
+    btn.style.display = 'inline-flex';
+    introSub.textContent = '';
+  };
+
+  const advance = () => {
+    if (state.introDone) return;
+
+    const line = lines[state.introIndex] ?? lines[lines.length - 1];
+
+    // Simple fade
+    introLine.style.opacity = '0';
+    setTimeout(() => {
+      introLine.textContent = line;
+      introLine.style.opacity = '1';
+    }, 400);
+
+    state.introIndex++;
+
+    if (state.introIndex >= lines.length) {
+      setTimeout(finish, 400);
+    }
+  };
+
+  introLine.style.transition = 'opacity 620ms ease';
+  introLine.textContent = lines[0];
+  introSub.textContent = 'Just a second…';
+
+  // Don’t repeat the first line on the first tick
+  state.introIndex = Math.min(1, lines.length);
+
+  // Automatic sequence (a little slower)
+  const INTRO_STEP_MS = 3000;
+  let timer = setInterval(() => {
+    advance();
+    if (state.introDone) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }, INTRO_STEP_MS);
+
+  // User can tap anywhere on intro to accelerate
+  $('screen-intro').addEventListener(
+    'click',
+    () => {
+      if (!state.introDone) {
+        advance();
+        clearInterval(timer);
+        timer = setInterval(() => {
+            advance();
+            if (state.introDone) {
+            clearInterval(timer);
+            timer = null;
+            }
+        }, INTRO_STEP_MS);
+      }
+    },
+    { passive: true }
+  );
+
+  btn.addEventListener('click', () => {
+    setScreen('screen-question');
+  });
+}
+
+function initQuestionScreen() {
+  const vars = {
+    toName: siteConfig.personal?.toName,
+  };
+  
+  $('question-heading').textContent = formatTemplate(siteConfig.personal?.questionHeading, vars);
+
+  $('yes-message-text').textContent = formatTemplate(siteConfig.personal?.yesMessage, vars);
+
+  const meme = $('meme-gif');
+  setMemeGif(meme, siteConfig.media?.memeQuestionGif);
+
+  const yesBtn = $('yes-button');
+  const noBtn = $('no-button');
+  const buttonsWrap = $('question-buttons');
+
+  const resetButtons = () => {
+    state.noClicks = 0;
+    state.noEvasiveEnabled = false;
+    noBtn.classList.remove('evasive');
+    noBtn.style.left = '';
+    noBtn.style.top = '';
+    yesBtn.style.width = '';
+    yesBtn.style.height = '';
+    yesBtn.style.fontSize = '';
+    noBtn.textContent = 'No';
+  };
+
+  const enableEvasiveNo = () => {
+    state.noEvasiveEnabled = true;
+    noBtn.classList.add('evasive');
+    // Make sure it starts somewhere sensible
+    positionNoButton({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+  };
+
+  const positionNoButton = (pointerEvent) => {
+    if (!state.noEvasiveEnabled) return;
+
+    const container = buttonsWrap;
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = noBtn.getBoundingClientRect();
+
+    const padding = 4;
+    const maxX = Math.max(padding, containerRect.width - btnRect.width - padding);
+    const maxY = Math.max(padding, containerRect.height - btnRect.height - padding);
+
+    const px = pointerEvent?.clientX ?? (containerRect.left + containerRect.width / 2);
+    const py = pointerEvent?.clientY ?? (containerRect.top + containerRect.height / 2);
+
+    let x = padding;
+    let y = padding;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      x = padding + Math.random() * (maxX - padding);
+      y = padding + Math.random() * (maxY - padding);
+
+      const cx = containerRect.left + x + btnRect.width / 2;
+      const cy = containerRect.top + y + btnRect.height / 2;
+
+      const dx = cx - px;
+      const dy = cy - py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > 100) break;
+    }
+
+    noBtn.style.left = `${Math.round(x)}px`;
+    noBtn.style.top = `${Math.round(y)}px`;
+  };
+
+  // Evasive behavior: move away when the pointer gets close
+  window.addEventListener('pointermove', (e) => {
+    if (!state.noEvasiveEnabled) return;
+
+    const r = noBtn.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = cx - e.clientX;
+    const dy = cy - e.clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 170) {
+      positionNoButton(e);
+    }
+  }, { passive: true });
+
+  // Also jump away on hover/focus as a backup
+  noBtn.addEventListener('pointerenter', (e) => {
+    if (state.noEvasiveEnabled) positionNoButton(e);
+  });
+
+  noBtn.addEventListener('focus', (e) => {
+    if (state.noEvasiveEnabled) positionNoButton(e);
+  });
+
+  noBtn.addEventListener('click', () => {
+    if (state.yesChosen) return;
+
+    // If we've completed the cycle and it reset, the No button becomes evasive.
+    if (state.noEvasiveEnabled) {
+      return;
+    }
+
+    playCue('no');
+
+    state.noClicks++;
+
+    const seq = siteConfig?.personal?.noSequence;
+    const step = seq[Math.min(state.noClicks - 1, seq.length - 1)] || {};
+
+    if (step.gif) setMemeGif(meme, step.gif);
+    if (step.phrase) noBtn.textContent = step.phrase;
+
+    if (step.reset) {
+        resetButtons();
+        enableEvasiveNo();
+        setMemeGif(meme, siteConfig.media?.finalNoGif);
+    }
+  });
+
+  yesBtn.addEventListener('click', () => {
+    if (state.yesChosen) return;
+
+    state.yesChosen = true;
+    playCue('yes');
+
+    if (siteConfig.media?.memeYesGif) {
+      setMemeGif(meme, siteConfig.media.memeYesGif);
+    }
+
+    $('question-buttons').style.display = 'none';
+    $('question-heading').textContent = siteConfig.personal?.yesMessageHead;
+    $('yes-message').hidden = false;
+  });
+
+  $('start-choices').addEventListener('click', () => {
+    setScreen('screen-choices');
+    startChoicesFlow();
+  });
+}
+
+function startChoicesFlow() {
+  let stepIndex = 0;
+
+  const title = $('choice-title');
+  const subtitle = $('choice-subtitle');
+  const container = $('choices-container');
+  const back = $('back-button');
+  const next = $('next-button');
+  const bar = $('progress-bar');
+
+  function render() {
+    const step = STEPS[stepIndex];
+    const key = step.key;
+    const list = siteConfig.choices?.[key] || [];
+
+    title.textContent = step.title;
+    subtitle.textContent = step.subtitle;
+
+    const progress = Math.round(((stepIndex + 1) / STEPS.length) * 100);
+    bar.style.width = `${progress}%`;
+
+    container.innerHTML = '';
+
+    // Special step: date selector
+    if (key === 'date') {
+      const wrap = document.createElement('div');
+      wrap.style.marginTop = '6px';
+      wrap.innerHTML = `
+        <label style="display:block;color:rgba(255,255,255,0.8);margin:6px 2px 8px">Choose a date</label>
+        <input id="date-input" type="date" style="width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.18);color:white;outline:none" />
+      `;
+      container.appendChild(wrap);
+
+      const input = wrap.querySelector('#date-input');
+      input.value = state.choices.date || '';
+      input.addEventListener('input', (e) => {
+        state.choices.date = e.target.value;
+      });
+
+      back.disabled = stepIndex === 0;
+      next.textContent = stepIndex === STEPS.length - 1 ? 'Review' : 'Next';
+      return;
+    }
+
+    const selectedValue = state.choices[key];
+
+    list.forEach((value) => {
+      const el = document.createElement('div');
+      el.className = 'choice' + (selectedValue === value ? ' choice--selected' : '');
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+
+      el.innerHTML = `
+        <div class="choice__label">
+          <span class="choice__name"></span>
+          <span class="choice__pill">Tap</span>
+        </div>
+      `;
+
+      el.querySelector('.choice__name').textContent = value;
+
+      const select = () => {
+        state.choices[key] = value;
+        // Clear other text when switching away from "Something else"
+        if (key === 'sweets') state.choices.sweetsOther = '';
+        if (key === 'food') state.choices.foodOther = '';
+        if (key === 'flowers') state.choices.flowersOther = '';
+        render();
+      };
+
+      el.addEventListener('click', select);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          select();
+        }
+      });
+
+      container.appendChild(el);
+    });
+
+    const renderOtherInput = (otherKey, labelText) => {
+      const wrap = document.createElement('div');
+      wrap.style.marginTop = '8px';
+      wrap.innerHTML = `
+        <label style="display:block;color:rgba(255,255,255,0.8);margin:8px 2px 6px">${labelText}</label>
+        <input id="other-input" type="text" placeholder="Type here…" style="width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.18);color:white;outline:none" />
+      `;
+      container.appendChild(wrap);
+      const input = wrap.querySelector('#other-input');
+      input.value = state.choices[otherKey] || '';
+      input.addEventListener('input', (e) => {
+        state.choices[otherKey] = e.target.value;
+      });
+    };
+
+    // Optional "Something else" text capture for sweets
+    if (key === 'sweets' && state.choices.sweets === 'Something else (tell me)') {
+      renderOtherInput('sweetsOther', 'What should I get?');
+    }
+
+    if (key === 'food' && state.choices.food === 'Something else (tell me)') {
+      renderOtherInput('foodOther', 'What food should we do?');
+    }
+
+    if (key === 'flowers' && state.choices.flowers === 'Something else (tell me)') {
+      renderOtherInput('flowersOther', 'What flowers should I get?');
+    }
+
+    back.textContent = stepIndex === 0 ? 'Back' : 'Back';
+    back.disabled = stepIndex === 0;
+    next.textContent = stepIndex === STEPS.length - 1 ? 'Review' : 'Next';
+  }
+
+  function validateCurrent() {
+    const step = STEPS[stepIndex];
+    const key = step.key;
+
+    if (key === 'date') {
+      return String(state.choices.date || '').trim().length > 0;
+    }
+
+    if (!state.choices[key]) return false;
+
+    if (key === 'sweets' && state.choices.sweets === 'Something else (tell me)') {
+      return state.choices.sweetsOther.trim().length > 0;
+    }
+
+    if (key === 'food' && state.choices.food === 'Something else (tell me)') {
+      return state.choices.foodOther.trim().length > 0;
+    }
+
+    if (key === 'flowers' && state.choices.flowers === 'Something else (tell me)') {
+      return state.choices.flowersOther.trim().length > 0;
+    }
+
+    return true;
+  }
+
+  back.addEventListener('click', () => {
+    if (stepIndex === 0) return;
+    stepIndex--;
+    render();
+  });
+
+  next.addEventListener('click', () => {
+    if (!validateCurrent()) {
+      subtitle.textContent = 'Pick one (and fill the box if needed) 😊';
+      return;
+    }
+
+    if (stepIndex < STEPS.length - 1) {
+      stepIndex++;
+      render();
+      return;
+    }
+
+    // Review
+    renderSummary();
+    setScreen('screen-submit');
+    if (state.review?.startCountdownAndMaybeSubmit) {
+      state.review.startCountdownAndMaybeSubmit();
+    }
+  });
+
+  render();
+}
+
+function renderSummary() {
+  const summary = $('summary');
+  summary.innerHTML = '';
+
+  const foodValue =
+    state.choices.food === 'Something else (tell me)'
+      ? state.choices.foodOther
+      : state.choices.food;
+
+  const flowersValue =
+    state.choices.flowers === 'Something else (tell me)'
+      ? state.choices.flowersOther
+      : state.choices.flowers;
+
+  const sweetValue =
+    state.choices.sweets === 'Something else (tell me)'
+      ? state.choices.sweetsOther
+      : state.choices.sweets;
+
+  const rows = [
+    { label: 'Food', value: foodValue },
+    { label: 'Flowers', value: flowersValue },
+    { label: 'Sweet', value: sweetValue },
+    { label: 'Date', value: state.choices.date }
+  ];
+
+  for (const r of rows) {
+    const row = document.createElement('div');
+    row.className = 'summary__row';
+    row.innerHTML = `<strong></strong><span></span>`;
+    row.querySelector('strong').textContent = r.label;
+    row.querySelector('span').textContent = r.value || '—';
+    summary.appendChild(row);
+  }
+
+  const status = $('send-status');
+  const countdown = $('countdown');
+  if (status) status.textContent = '';
+  if (countdown) countdown.textContent = '';
+}
+
+function initAutoReviewAndSubmit() {
+  const status = $('send-status');
+  const countdownEl = $('countdown');
+
+  let countdownTimer = null;
+  let inFlight = false;
+
+  function setStatus(msg) {
+    status.textContent = msg;
+  }
+
+  function buildCommentBody() {
+    const personal = siteConfig.personal || {};
+
+    const foodValue =
+      state.choices.food === 'Something else (tell me)'
+        ? state.choices.foodOther
+        : state.choices.food;
+
+    const flowersValue =
+      state.choices.flowers === 'Something else (tell me)'
+        ? state.choices.flowersOther
+        : state.choices.flowers;
+
+    const sweetValue =
+      state.choices.sweets === 'Something else (tell me)'
+        ? state.choices.sweetsOther
+        : state.choices.sweets;
+
+    const clientTimestamp = new Date().toISOString();
+    const pageUrl = window.location.href;
+
+    return [
+      `New Valentine response (${clientTimestamp})`,
+      '',
+      `To: ${personal.toName || '—'}`,
+      `From: ${personal.fromName || '—'}`,
+      '',
+      `Food: ${foodValue || '—'}`,
+      `Flowers: ${flowersValue || '—'}`,
+      `Sweet: ${sweetValue || '—'}`,
+      `Date: ${state.choices.date || '—'}`,
+      '',
+      `Page: ${pageUrl}`,
+      `User-Agent: ${navigator.userAgent}`,
+      `Referrer: ${document.referrer || '—'}`
+    ].join('\n');
+  }
+
+  async function submitToGitHubIfEnabled() {
+    const cfg = siteConfig.github;
+    if (!cfg?.enabled) return { skipped: true, reason: 'disabled' };
+
+    const owner = cfg.owner;
+    const repo = cfg.repo;
+    const issueNumber = cfg.issueNumber;
+    const token = cfg.token;
+
+    // No prompts in the main flow.
+    if (!owner || !repo || !issueNumber || !token) {
+      return { skipped: true, reason: 'not_configured' };
+    }
+
+    const apiBase = (cfg.apiBase || 'https://api.github.com').replace(/\/$/, '');
+    const url = `${apiBase}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${Number(issueNumber)}/comments`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify({ body: buildCommentBody() })
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`GitHub submit failed: HTTP ${res.status} ${text}`);
+    }
+
+    return { ok: true };
+  }
+
+  function showFinalScreen() {
+    const vars = {
+      toName: siteConfig.personal?.toName,
+    };
+    const titleEl = $('final-title');
+    const bodyEl = $('final-body');
+
+    titleEl.textContent = formatTemplate(siteConfig.personal?.finalThanksTitle, vars);
+    bodyEl.textContent = formatTemplate(siteConfig.personal?.finalThanksBody, vars);
+    setScreen('screen-final');
+  }
+
+  async function startCountdownAndMaybeSubmit() {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = null;
+
+    let remaining = 5;
+    const tick = () => {
+      if (countdownEl) {
+        countdownEl.textContent = `Continuing in ${remaining}s…`;
+      }
+      remaining -= 1;
+      if (remaining < 0) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+        showFinalScreen();
+      }
+    };
+
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const result = await submitToGitHubIfEnabled();
+      if (result?.ok) {
+        status.textContent = 'Saved 💌';
+      } else {
+        // If GitHub is disabled/not configured, keep it quiet.
+        status.textContent = '';
+      }
+    } catch (e) {
+      console.error(e);
+      status.textContent = '';
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  return {
+    startCountdownAndMaybeSubmit
+  };
+}
+
+async function boot() {
+  await loadConfig();
+
+  const fromName = siteConfig.personal?.fromName;
+  const toName = siteConfig.personal?.toName;
+  const footerText = `This webpage is made by ${fromName} for ${toName}.`;
+  const footerEl = $('footer-text');
+  if (footerEl) footerEl.textContent = footerText;
+
+  initStarfield();
+  initAudio();
+  startIntro();
+  initQuestionScreen();
+  const review = initAutoReviewAndSubmit();
+
+  // Expose on state so the choices flow can start the countdown
+  state.review = review;
+
+  // Improve intro prompt once loaded
+  $('intro-line').textContent = `Hey ${toName}.`;
+  $('intro-sub').textContent = '(tap anywhere)';
+
+  // Show Continue button after intro finishes
+  const showContinue = () => {
+    $('intro-continue').style.display = 'inline-flex';
+  };
+
+  // Poll for intro done (keeps code simple)
+  const poll = setInterval(() => {
+    if (state.introDone) {
+      clearInterval(poll);
+      showContinue();
+    }
+  }, 200);
+}
+
+boot().catch((e) => {
+  const toName = siteConfig.personal?.toName;
+  console.error(e);
+  $('intro-line').textContent = `Sorry ${toName}, something went wrong 😅`;
+  $('intro-sub').textContent = 'Please refresh and try again.';
+});
