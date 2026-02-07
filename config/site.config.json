@@ -90,12 +90,11 @@
     }
   },
   "github": {
-    "enabled": false,
+    "enabled": true,
     "apiBase": "https://api.github.com",
-    "owner": "OWNER",
-    "repo": "REPO",
+    "owner": "Quadrob",
+    "repo": "be-my-valentines",
     "issueNumber": 1,
-    "token": "",
-    "promptForToken": true
+    "token": ""
   }
 }

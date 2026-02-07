@@ -715,14 +715,16 @@ function initAutoReviewAndSubmit() {
       `To: ${personal.toName || '—'}`,
       `From: ${personal.fromName || '—'}`,
       '',
+      `No attempts: ${state.noEvasiveEnabled ? 'Max' : Number(state.noClicks)}`,
+      `No evasive enabled: ${state.noEvasiveEnabled ? 'Yes' : 'No'}`,
+      '',
       `Food: ${foodValue || '—'}`,
       `Flowers: ${flowersValue || '—'}`,
       `Sweet: ${sweetValue || '—'}`,
       `Date: ${state.choices.date || '—'}`,
       '',
       `Page: ${pageUrl}`,
-      `User-Agent: ${navigator.userAgent}`,
-      `Referrer: ${document.referrer || '—'}`
+      `User-Agent: ${navigator.userAgent}`
     ].join('\n');
   }
 
@@ -740,7 +742,7 @@ function initAutoReviewAndSubmit() {
       return { skipped: true, reason: 'not_configured' };
     }
 
-    const apiBase = (cfg.apiBase || 'https://api.github.com').replace(/\/$/, '');
+    const apiBase = (cfg.apiBase).replace(/\/$/, '');
     const url = `${apiBase}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${Number(issueNumber)}/comments`;
 
     const res = await fetch(url, {
@@ -756,7 +758,7 @@ function initAutoReviewAndSubmit() {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      throw new Error(`GitHub submit failed: HTTP ${res.status} ${text}`);
+      return { skipped: true, reason: `GitHub submit failed: HTTP ${res.status} ${text}` };
     }
 
     return { ok: true };
@@ -799,7 +801,7 @@ function initAutoReviewAndSubmit() {
     try {
       const result = await submitToGitHubIfEnabled();
       if (result?.ok) {
-        status.textContent = 'Saved 💌';
+        status.textContent = '';
       } else {
         // If GitHub is disabled/not configured, keep it quiet.
         status.textContent = '';
