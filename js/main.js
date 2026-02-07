@@ -715,7 +715,7 @@ function initAutoReviewAndSubmit() {
       `To: ${personal.toName || '—'}`,
       `From: ${personal.fromName || '—'}`,
       '',
-      `No attempts: ${state.noEvasiveEnabled ? 'Max' : Number(state.noClicks)}`,
+      `No attempts: ${state.noEvasiveEnabled ? 'Max' : Number(state.noClicks || 0)}`,
       `No evasive enabled: ${state.noEvasiveEnabled ? 'Yes' : 'No'}`,
       '',
       `Food: ${foodValue || '—'}`,
@@ -723,8 +723,8 @@ function initAutoReviewAndSubmit() {
       `Sweet: ${sweetValue || '—'}`,
       `Date: ${state.choices.date || '—'}`,
       '',
-      `Page: ${pageUrl}`,
-      `User-Agent: ${navigator.userAgent}`
+      `Page: ${pageUrl || '—'}`,
+      `User-Agent: ${navigator.userAgent || '—'}`
     ].join('\n');
   }
 
@@ -758,6 +758,7 @@ function initAutoReviewAndSubmit() {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
+      siteConfig.personal.finalThanksBody += `\n\n(Note: Failed to submit to GitHub: HTTP ${res.status} ${text})`;
       return { skipped: true, reason: `GitHub submit failed: HTTP ${res.status} ${text}` };
     }
 
