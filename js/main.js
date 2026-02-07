@@ -137,55 +137,96 @@ function initStarfield() {
 }
 
 function initAudio() {
+  const muteToggle = $('mute-toggle');
   const cfg = siteConfig.media?.audio;
   state.audio.enabled = Boolean(cfg?.enabled);
-  state.audio.muted = true;
+  state.audio.muted = false;
+  muteToggle.textContent = 'Music: Playing'
 
   if (!state.audio.enabled) {
-    $('mute-toggle').style.display = 'none';
+    muteToggle.style.display = 'none';
+    state.audio.muted = true;
     return;
   }
 
   const safeAudio = (url) => {
     if (!url) return null;
     const a = new Audio(url);
-    a.loop = false;
+    a.loop = true;
     a.preload = 'auto';
     a.muted = state.audio.muted;
     return a;
   };
 
   state.audio.bgm = safeAudio(cfg.bgmUrl);
-  if (state.audio.bgm) state.audio.bgm.loop = true;
   state.audio.yes = safeAudio(cfg.yesUrl);
   state.audio.no = safeAudio(cfg.noUrl);
 
-  $('mute-toggle').addEventListener('click', () => {
+  muteToggle.addEventListener('click', () => {
     state.audio.muted = !state.audio.muted;
     const all = [state.audio.bgm, state.audio.yes, state.audio.no].filter(Boolean);
     for (const a of all) a.muted = state.audio.muted;
-
-    $('mute-toggle').textContent = state.audio.muted ? 'Music' : 'Music: on';
-
-    if (!state.audio.muted && state.audio.bgm) {
-      state.audio.bgm.play().catch(() => {
-        // Autoplay may be blocked until a user gesture; ignore.
-      });
-    }
+    muteToggle.textContent = state.audio.muted ? 'Music: Muted' : 'Music: Playing';
   });
+}
+
+function playBgm() {
+  if (!state.audio.enabled) return;
+  if (state.audio.muted) return;
+  const a = state.audio.bgm;
+  if (!a) return;
+  if (!a.paused) return;
+
+  try {
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch {
+    // ignore
+  }
 }
 
 function playCue(which) {
   if (!state.audio.enabled) return;
+  for (const key of ['bgm', 'yes', 'no']) {
+    const a = state.audio[key];
+    if (a && !a.paused) {
+      a.pause();
+      a.currentTime = 0;
+    }
+  }
   const a = state.audio[which];
   if (!a) return;
 
   try {
     a.currentTime = 0;
-    a.play();
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch {
     // ignore
   }
+}
+
+function initWelcomeScreen() {
+  const toName = siteConfig.personal?.toName;
+  const fromName = siteConfig.personal?.fromName;
+  const vars = { toName, fromName };
+
+  const titleEl = $('welcome-title');
+  const gifEl = $('welcome-gif');
+
+  titleEl.textContent = formatTemplate(siteConfig.personal?.welcomeTitle, vars);
+  setMemeGif(gifEl, siteConfig.media?.memeWelcomeGif);
+
+  let started = false;
+  const start = () => {
+    if (started) return;
+    started = true;
+    setScreen('screen-intro');
+    startIntro();
+  };
+
+  // Start on any tap/click anywhere on the page.
+  document.addEventListener('pointerdown', start, { once: true, passive: true });
 }
 
 function startIntro() {
@@ -204,6 +245,7 @@ function startIntro() {
 
   state.introIndex = 0;
   state.introDone = false;
+  playBgm();
 
   // Let user tap to speed up / finish
   const finish = () => {
@@ -233,7 +275,7 @@ function startIntro() {
 
   introLine.style.transition = 'opacity 620ms ease';
   introLine.textContent = lines[0];
-  introSub.textContent = 'Just a second…';
+  introSub.textContent = '(Tap to continue)';
 
   // Don’t repeat the first line on the first tick
   state.introIndex = Math.min(1, lines.length);
@@ -374,7 +416,7 @@ function initQuestionScreen() {
       return;
     }
 
-    playCue('no');
+    if (state.noClicks === 0) playCue('no');
 
     state.noClicks++;
 
@@ -772,34 +814,21 @@ async function boot() {
 
   initStarfield();
   initAudio();
-  startIntro();
+  setScreen('screen-welcome');
+  initWelcomeScreen();
   initQuestionScreen();
   const review = initAutoReviewAndSubmit();
 
   // Expose on state so the choices flow can start the countdown
   state.review = review;
-
-  // Improve intro prompt once loaded
-  $('intro-line').textContent = `Hey ${toName}.`;
-  $('intro-sub').textContent = '(tap anywhere)';
-
-  // Show Continue button after intro finishes
-  const showContinue = () => {
-    $('intro-continue').style.display = 'inline-flex';
-  };
-
-  // Poll for intro done (keeps code simple)
-  const poll = setInterval(() => {
-    if (state.introDone) {
-      clearInterval(poll);
-      showContinue();
-    }
-  }, 200);
 }
 
 boot().catch((e) => {
   const toName = siteConfig.personal?.toName;
   console.error(e);
-  $('intro-line').textContent = `Sorry ${toName}, something went wrong 😅`;
-  $('intro-sub').textContent = 'Please refresh and try again.';
+  setScreen('screen-welcome');
+  const titleEl = $('welcome-title');
+  const subtitleEl = $('welcome-subtitle');
+  if (titleEl) titleEl.textContent = `Sorry ${toName}, something went wrong 😅`;
+  if (subtitleEl) subtitleEl.textContent = 'Please refresh and try again.';
 });

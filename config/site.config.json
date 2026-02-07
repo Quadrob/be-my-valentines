@@ -2,7 +2,8 @@
   "personal": {
     "toName": "HER_NAME_HERE",
     "fromName": "YOUR_NAME_HERE",
-    "pageTitle": "Happy Valentine’s Day",
+    "pageTitle": "Happy Valentine’s Day 🔥",
+    "welcomeTitle": "Tap Anywhere to Start!",
     "introLines": [
       "Hey {toName}.",
       "Not sure if I’ve told you this, but I really like your name!",
@@ -77,14 +78,15 @@
     ]
   },
   "media": {
+    "memeWelcomeGif": "assets/hey.gif",
     "memeQuestionGif": "assets/question.gif",
     "finalNoGif": "assets/finalNo.gif",
     "memeYesGif": "assets/yes.gif",
     "audio": {
-      "enabled": false,
-      "bgmUrl": "",
-      "yesUrl": "",
-      "noUrl": ""
+      "enabled": true,
+      "bgmUrl": "assets/bgm.mp3",
+      "yesUrl": "assets/yes.mp3",
+      "noUrl": "assets/no.mp3"
     }
   },
   "github": {

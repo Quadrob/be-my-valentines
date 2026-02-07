@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A tiny Valentine website" />
-    <title>Happy Valentine’s Day ❤️</title>
+    <title>Happy Valentine’s Day 🔥</title>
 
     <link rel="stylesheet" href="css/style.css" />
 
@@ -15,8 +15,18 @@
     <canvas id="starfield" aria-hidden="true"></canvas>
 
     <main class="app" id="app">
+      <!-- WELCOME (requires click to start) -->
+      <section class="screen screen--active" id="screen-welcome">
+        <div class="card">
+          <div class="meme">
+            <img id="welcome-gif" alt="welcome meme" />
+          </div>
+          <h2 class="card__title" id="welcome-title"></h2>
+        </div>
+      </section>
+
       <!-- INTRO -->
-      <section class="screen screen--active" id="screen-intro">
+      <section class="screen" id="screen-intro" aria-hidden="true">
         <div class="intro">
           <!-- <div class="intro__tag">For you</div> -->
           <h1 class="intro__line" id="intro-line">Loading…</h1>
@@ -93,7 +103,7 @@
 
       <footer class="footer">
         <div class="footer__text" id="footer-text"></div>
-        <button class="mute" id="mute-toggle" type="button" aria-label="Toggle music">Music</button>
+        <button class="mute" id="mute-toggle" type="button" aria-label="Toggle music"></button>
       </footer>
     </main>
   </body>
