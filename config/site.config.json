@@ -1,13 +1,13 @@
 {
   "personal": {
-    "toName": "HER_NAME_HERE",
-    "fromName": "YOUR_NAME_HERE",
+    "toName": "Lara",
+    "fromName": "Robert",
     "pageTitle": "Happy Valentine’s Day 🔥",
     "welcomeTitle": "Tap Anywhere to Start!",
     "introLines": [
       "Hey {toName}.",
       "Not sure if I’ve told you this, but I really like your name!",
-      "Also, today is Valentine Day!!!",
+      "Also, today is Valentine's Day!!!",
       "I was going to send you a message saying something like...",
       "Happy Valentine’s Day {toName}!! All that Love and blah blah…",
       "But then I stopped.",
@@ -95,6 +95,6 @@
     "owner": "Quadrob",
     "repo": "be-my-valentines",
     "issueNumber": 1,
-    "token": ""
+    "token": "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"
   }
 }
