@@ -750,7 +750,8 @@ function initAutoReviewAndSubmit() {
       headers: {
         Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Token ${token}`,
+        // Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28'
       },
       body: JSON.stringify({ body: buildCommentBody() })
