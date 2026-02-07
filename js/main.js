@@ -281,7 +281,7 @@ function startIntro() {
   state.introIndex = Math.min(1, lines.length);
 
   // Automatic sequence (a little slower)
-  const INTRO_STEP_MS = 3000;
+  const INTRO_STEP_MS = 3500;
   let timer = setInterval(() => {
     advance();
     if (state.introDone) {
@@ -483,12 +483,26 @@ function startChoicesFlow() {
       wrap.style.marginTop = '6px';
       wrap.innerHTML = `
         <label style="display:block;color:rgba(255,255,255,0.8);margin:6px 2px 8px">Choose a date</label>
-        <input id="date-input" type="date" style="width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.18);color:white;outline:none" />
+        <input id="date-input" type="date" style="width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.2);color:white;outline:none" />
       `;
       container.appendChild(wrap);
 
       const input = wrap.querySelector('#date-input');
       input.value = state.choices.date || '';
+
+      const openPicker = () => {
+        try {
+          input.focus();
+          if (typeof input.showPicker === 'function') {
+            input.showPicker();
+          }
+        } catch {
+          // ignore
+        }
+      };
+
+      input.addEventListener('click', openPicker);
+      input.addEventListener('focus', openPicker);
       input.addEventListener('input', (e) => {
         state.choices.date = e.target.value;
       });
