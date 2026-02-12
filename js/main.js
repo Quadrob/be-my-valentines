@@ -275,13 +275,13 @@ function startIntro() {
 
   introLine.style.transition = 'opacity 620ms ease';
   introLine.textContent = lines[0];
-  introSub.textContent = '(Tap to continue)';
+  introSub.textContent = '';
 
   // Don’t repeat the first line on the first tick
   state.introIndex = Math.min(1, lines.length);
 
   // Automatic sequence (a little slower)
-  const INTRO_STEP_MS = 3500;
+  const INTRO_STEP_MS = 4000;
   let timer = setInterval(() => {
     advance();
     if (state.introDone) {
@@ -750,8 +750,7 @@ function initAutoReviewAndSubmit() {
       headers: {
         Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json',
-        Authorization: `Token ${token}`,
-        // Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28'
       },
       body: JSON.stringify({ body: buildCommentBody() })
@@ -759,7 +758,6 @@ function initAutoReviewAndSubmit() {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      siteConfig.personal.finalThanksBody += `\n\n(Note: Failed to submit to GitHub: HTTP ${res.status} ${text})`;
       return { skipped: true, reason: `GitHub submit failed: HTTP ${res.status} ${text}` };
     }
 
