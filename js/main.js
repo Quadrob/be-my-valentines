@@ -73,6 +73,21 @@ function setScreen(activeId) {
   }
 }
 
+function base64ToUnicode(encodedString) {
+  // Decode the Base64 string into a binary string
+  const binaryString = atob(encodedString);
+
+  // Convert the binary string to a Uint8Array (array of bytes)
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Use TextDecoder to convert the bytes to a proper UTF-8 string
+  return new TextDecoder().decode(bytes);
+}
+
 async function loadConfig() {
   const res = await fetch('config/site.config.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load config');
@@ -735,7 +750,7 @@ function initAutoReviewAndSubmit() {
     const owner = cfg.owner;
     const repo = cfg.repo;
     const issueNumber = cfg.issueNumber;
-    const token = cfg.token;
+    const token = base64ToUnicode(cfg.token).trim();
 
     // No prompts in the main flow.
     if (!owner || !repo || !issueNumber || !token) {
