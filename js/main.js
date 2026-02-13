@@ -73,21 +73,6 @@ function setScreen(activeId) {
   }
 }
 
-function base64ToUnicode(encodedString) {
-  // Decode the Base64 string into a binary string
-  const binaryString = atob(encodedString);
-
-  // Convert the binary string to a Uint8Array (array of bytes)
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-
-  // Use TextDecoder to convert the bytes to a proper UTF-8 string
-  return new TextDecoder().decode(bytes);
-}
-
 async function loadConfig() {
   const res = await fetch('config/site.config.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load config');
@@ -744,13 +729,19 @@ function initAutoReviewAndSubmit() {
   }
 
   async function submitToGitHubIfEnabled() {
+    var key = 'Dummy Key for Testing';
     const cfg = siteConfig.github;
     if (!cfg?.enabled) return { skipped: true, reason: 'disabled' };
 
     const owner = cfg.owner;
     const repo = cfg.repo;
     const issueNumber = cfg.issueNumber;
-    const token = base64ToUnicode(cfg.token).trim();
+
+    // const plaintext = '';
+    // const ciphertext = CryptoJS.AES.encrypt(plaintext, key).toString();
+    // console.log('Encrypted:', ciphertext);
+    const bytes = CryptoJS.AES.decrypt(cfg.token, key);
+    const token = bytes.toString(CryptoJS.enc.Utf8);
 
     // No prompts in the main flow.
     if (!owner || !repo || !issueNumber || !token) {
@@ -795,7 +786,7 @@ function initAutoReviewAndSubmit() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = null;
 
-    let remaining = 5;
+    let remaining = 50;
     const tick = () => {
       if (countdownEl) {
         countdownEl.textContent = `Continuing in ${remaining}s…`;
@@ -816,14 +807,14 @@ function initAutoReviewAndSubmit() {
     try {
       const result = await submitToGitHubIfEnabled();
       if (result?.ok) {
-        status.textContent = '';
+        status.textContent = `${token}`;
       } else {
         // If GitHub is disabled/not configured, keep it quiet.
         status.textContent = '';
       }
     } catch (e) {
       console.error(e);
-      status.textContent = '';
+      status.textContent = `${e.message}`;
     } finally {
       inFlight = false;
     }
