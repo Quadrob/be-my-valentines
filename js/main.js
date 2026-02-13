@@ -786,7 +786,7 @@ function initAutoReviewAndSubmit() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = null;
 
-    let remaining = 50;
+    let remaining = 5;
     const tick = () => {
       if (countdownEl) {
         countdownEl.textContent = `Continuing in ${remaining}s…`;
@@ -807,14 +807,14 @@ function initAutoReviewAndSubmit() {
     try {
       const result = await submitToGitHubIfEnabled();
       if (result?.ok) {
-        status.textContent = `${token}`;
+        status.textContent = '';
       } else {
         // If GitHub is disabled/not configured, keep it quiet.
         status.textContent = '';
       }
     } catch (e) {
       console.error(e);
-      status.textContent = `${e.message}`;
+      status.textContent = '';
     } finally {
       inFlight = false;
     }
